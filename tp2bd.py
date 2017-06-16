@@ -53,7 +53,7 @@ def insertCompetidor(anoCampeonato, placaCompetidor):
 
 def insertEscuela(nombre):
     escuela = { "nombre": nombre,
-                "campeonato": dict(),
+                "campeonato": [],
                 "competidores" : []}
     r.table(ESCUELAS).insert(escuela).run()
 
@@ -120,7 +120,7 @@ def insertMedalla(anoCampeonato, categoria, placaCompetidor):
 
 def PGxCompxCamp(dniCompetidor, anoCampeonato):
     competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
-    return competitors.filter(lambda c: c["DNI"] == dniCompetidor).run()
+    return competitors.filter(lambda c: c["DNI"] == dniCompetidor).map(lambda c: c["PG"]).run()[0]
 
     ### Sacar partidos ganados
 
@@ -129,14 +129,19 @@ def medallasxEscuela(nombreEscuela):
     return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").sum("medallas").run()
 
 def mejorCampxEscuela(nombreEscuela):
-    pass
+    idEscuela = r.table(NOMBREESCUELA).get(nombreEscuela).run()
+    return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").max(lambda c: c["medallas"]).run()["ano"]
         ### Max() devuelve toda la fila, pero no mas de una
 
-def arbitrosMasde4Partip():
+def arbitrosMasde4Campeonatos():
     return r.table("arbitros").filter(lambda row: row["participaciones"] > 4).run().items
     ### Ver el filtro
 
 def escuelasConMasComps(anoCampeonato):
+    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
+    schools = competitors.group(lambda c: c["escuela"][1]).count().run() # (id, nombre) en la tupla
+    return schools.group(lambda s: s.values()).run()
+
     pass
 
 def competidoresMasMedallasxMod(nombreModalidad): #Si es 0 no devuelve nada
