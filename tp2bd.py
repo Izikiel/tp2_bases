@@ -108,27 +108,35 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     modalidad = r.table(CATEGORIAS).get(IDcategoria).run()["modalidad"]
     ## Debe competir en esa categoria ese ano
 
-    ### Actualizar record modalidad
+    ### Actualizar record modalidad y competidor
     record = r.table(MODALIDADES).get(modalidad).run()["record"]
-    medallasCompetidor = r.table(COMPETIDORES).get(dniCompetidor).get_field("medallas").run()[modalidad]
-    if (record == medallasCompetidor):
+    medallasCompetidor = r.table(COMPETIDORES).get(dniCompetidor).get_field("medallas").run()
+    if modalidad in medallasCompetidor:
+        medallasModalidad = medallasCompetidor[modalidad]
+        medallasCompetidor[modalidad] += 1
+    else:
+        medallasModalidad = 1
+        medallasCompetidor[modalidad] = 1
+
+
+    if (record == medallasModalidad):
         record += 1
         r.table(MODALIDADES).get(modalidad).update({"record" : record, "holders" : [dniCompetidor]}).run()
-    elif (record == medallasCompetidor + 1):
+    elif (record == medallasModalidad + 1):
         holders = r.table(MODALIDADES).get(modalidad).run()["holders"]
         r.table(MODALIDADES).get(modalidad).update({"record" : record, "holders" : holders + [dniCompetidor]}).run()
 
-    ### Actualizar competidor
-
-    dic = r.table("competidor").get(dniCompetidor).get_field("medallas").run()
-    dic[modalidad] += 1
-    r.table(COMPETIDORES).get(dniCompetidor).update({"medallas" : dic}).run()
+    r.table(COMPETIDORES).get(dniCompetidor).update({"medallas" : medallasCompetidor}).run()
 
     ### Actualizar escuela
 
     escuela = r.table(COMPETIDORES).get(dniCompetidor).get_field("escuela").run()
     dic = r.table(ESCUELAS).get(escuela).run()["campeonato"]
-    dic[anoCampeonato] += 1
+
+    if anoCampeonato in dic:
+        dic[str(anoCampeonato)] += 1
+    else:
+        dic[str(anoCampeonato)] = 1
     r.table(ESCUELAS).get(escuela).update({"campeonato": dic}).run()
 
     ### Actualizar categoria
@@ -220,6 +228,7 @@ if __name__ == '__main__':
 #        if i["ano"] == 2002 : print i["competidores"]
 
 #    print r.table(MODALIDADES).get("modalidad1").run()
-    insertCategoria(2002, "modalidad1", None, None, None, None, None, None)
+#    insertCategoria(2002, "modalidad1", None, None, None, None, None, None)
     insertMedalla({"anoCampeonato" : 2002, "nombreModalidad" : "modalidad1"}, 10000001, "oro")
+    print r.table(COMPETIDORES).get(10000001).run()
 
