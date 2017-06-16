@@ -1,4 +1,3 @@
-
 import rethinkdb as r
 
 CAMPEONATOS = "campeonatos"
@@ -148,7 +147,7 @@ def getCategoria(categoria):
 
 def PGxCompxCamp(dniCompetidor, anoCampeonato):
     competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
-    return competitors.filter(lambda c: c["DNI"] == dniCompetidor).run()
+    return competitors.filter(lambda c: c["DNI"] == dniCompetidor).map(lambda c: c["PG"]).run()[0]
 
     ### Sacar partidos ganados
 
@@ -157,18 +156,39 @@ def medallasxEscuela(nombreEscuela):
     return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").sum("medallas").run()
 
 def mejorCampxEscuela(nombreEscuela):
-    pass
-        ### Max() devuelve toda la fila, pero no mas de una
+    idEscuela = r.table(NOMBREESCUELA).get(nombreEscuela).run()
+    return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").max(lambda c: c["medallas"]).run()["ano"]
 
-def arbitrosMasde4Partip():
-    return r.table("arbitros").filter(lambda row: row["participaciones"] > 4).run().items
+def arbitrosMasde4Campeonatos():
+    return r.table("arbitros").filter(lambda row: row["participaciones"] > 4).run()
     ### Ver el filtro
 
 def escuelasConMasComps(anoCampeonato):
-    pass
+    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
+    schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().ungroup().map(lambda group: {
+        "value": group["reduction"],
+        "school": group["group"]
+        }).group(lambda x: x["value"]).run()
+    most_competitors = schools.max(schools.keys()).run()
+    return schools[most_competitors]
+
+def escuelasConMasCompsMapReduce(anoCampeonato):
+    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
+    schools = competitors.map(lambda c: {
+        "school": c["escuela"]["Nombre"],
+    "value": 1
+    }).group("school").reduce(lambda a, b: {
+        "school": a["school"],
+        "count": a["count"] + b["count"]
+    }).ungroup().map(lambda g: {"value": group["reduction"],
+        "school": group["group"]
+        }).group(lambda x: x["value"]).run()
+    most_competitors = schools.max(schools.keys()).run()
+    return schools[most_competitors]
+
 
 def competidoresMasMedallasxMod(nombreModalidad): #Si es 0 no devuelve nada
-    pass
+    return r.table(MODALIDADES).get(nombreModalidad).get_field("Holders").map(lambda c: c["Nombre"]).run()
 
 if __name__ == '__main__':
     connectToDB()
