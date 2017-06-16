@@ -1,4 +1,3 @@
-
 import rethinkdb as r
 
 CAMPEONATOS = "campeonatos"
@@ -131,18 +130,23 @@ def medallasxEscuela(nombreEscuela):
 def mejorCampxEscuela(nombreEscuela):
     idEscuela = r.table(NOMBREESCUELA).get(nombreEscuela).run()
     return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").max(lambda c: c["medallas"]).run()["ano"]
-        ### Max() devuelve toda la fila, pero no mas de una
+
+def mejorCampxEscuelaMapReduce(nombreEscuela):
+    idEscuela = r.table(NOMBREESCUELA).get(nombreEscuela).run()
+    return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").max(lambda c: c["medallas"]).run()["ano"]
 
 def arbitrosMasde4Campeonatos():
-    return r.table("arbitros").filter(lambda row: row["participaciones"] > 4).run().items
+    return r.table("arbitros").filter(lambda row: row["participaciones"] > 4).run()
     ### Ver el filtro
 
 def escuelasConMasComps(anoCampeonato):
     competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
-    schools = competitors.group(lambda c: c["escuela"][1]).count().run() # (id, nombre) en la tupla
-    return schools.group(lambda s: s.values()).run()
-
-    pass
+    schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().ungroup().map(lambda group: {
+        "value": group["reduction"],
+        "school": group["group"]
+        }).group(lambda x: x["value"]).run()
+    most_competitors = schools.max(schools.keys())
+    return schools[most_competitors]
 
 def competidoresMasMedallasxMod(nombreModalidad): #Si es 0 no devuelve nada
     pass
