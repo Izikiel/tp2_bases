@@ -160,7 +160,10 @@ def mejorCampxEscuela(nombreEscuela):
     return r.table(ESCUELAS).get(idEscuela).get_field("campeonatos").max(lambda c: c["medallas"]).run()["ano"]
 
 def arbitrosMasde4Campeonatos():
-    return r.table("arbitros").filter(lambda row: row["participaciones"] > 4).run()
+    return r.table("arbitros").map(lambda a: {
+        "placa": a["placa"],
+        "participaciones": a["categorias"].map(lambda r: r["ano"]).count()
+    }).filter(lambda row: row["participaciones"] > 4).get_field("placa").run()
     ### Ver el filtro
 
 def escuelasConMasComps(anoCampeonato):
@@ -213,7 +216,7 @@ if __name__ == '__main__':
 
 #    insertPartido({"anoCampeonato" : 2002}, 10000001, 10000002, 314)
 #    print getCategoria({"anoCampeonato" : 2002})
-#    for i in r.table(CAMPEONATOS).run().items: 
+#    for i in r.table(CAMPEONATOS).run().items:
 #        if i["ano"] == 2002 : print i["competidores"]
 
 #    print r.table(MODALIDADES).get("modalidad1").run()
