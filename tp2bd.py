@@ -9,17 +9,16 @@ MODALIDADES = "modalidades"
 CATEGORIAS = "categorias"
 NOMBREESCUELA = "nombreEscuela"
 
-
 def connectToDB():
     r.connect().repl()
 
 def createTables():
     r.table_create(CAMPEONATOS, primary_key = "ano").run()
     r.table_create(ARBITROS, primary_key = "placaArbitro").run()
-    r.table_create(COMPETIDORES, primary_key = "placaCompetidor").run()
+    r.table_create(COMPETIDORES, primary_key = "dniCompetidor").run()
     r.table_create(ESCUELAS, primary_key = "nombre").run()
     r.table_create(MODALIDADES, primary_key = "nombre").run()
-    r.table_create(CATEGORIAS, primary_key = "nombre").run()
+    r.table_create(CATEGORIAS, primary_key = "id").run()
     r.table_create(NOMBREESCUELA, primary_key = "nombre").run()
 
 ### Insertions
@@ -37,32 +36,38 @@ def insertModalidad(nombre):
                   "holders" : [] }
     r.table(MODALIDADES).insert(modalidad).run()
 
-def crearCompetidor(placaCompetidor, nombre, nombreEscuela):
-    competidor = { "placaCompetidor": placaCompetidor,
+def crearCompetidor(dniCompetidor, nombre, nombreEscuela):
+    competidor = { "dniCompetidor": dniCompetidor,
+                   "nombre" : nombre,
                    "escuela" : nombreEscuela,
                    "medallas" : dict()}
     ##ya debe existir la escuela
     r.table(COMPETIDORES).insert(competidor).run()
 
-def insertCompetidor(anoCampeonato, placaCompetidor):
+def insertCompetidor(anoCampeonato, dniCompetidor):
     ##ya debe existir
-    escuela = r.table(COMPETIDORES).get(placaCompetidor).run()["escuela"]
+    escuela = r.table(COMPETIDORES).get(dniCompetidor).run()["escuela"]
     dic = r.table(CAMPEONATOS).get(anoCampeonato).run()["competidores"]
-    dic[placaCompetidor] = (escuela, 0)
+    dic[str(dniCompetidor)] = (escuela, 0)
     r.table(CAMPEONATOS).get(anoCampeonato).update({"competidores" : dic}).run()
 
-def insertEscuela(nombre):
+def insertEscuela(nombre, pais):
     escuela = { "nombre": nombre,
                 "campeonato": dict(),
-                "competidores" : []}
+                "competidores" : [],
+                "pais" : pais}
     r.table(ESCUELAS).insert(escuela).run()
 
-def insertCategoria(anoCampeonato, nombre, nombreModalidad):
+def insertCategoria(anoCampeonato, nombreModalidad, pesoMin, pesoMax, edadMin, edadMax, genero, graduacion):
     ##La modalidad debe existir
     categoria = {
-            "id" : "c" + anoCampeonato + "m" + nombreModalidad + "c" + nombre,
+            "id" : str(anoCampeonato) + ":" + str(nombreModalidad) + ":" + str(pesoMin) + ":" + str(pesoMax) + ":" + str(edadMin) + ":" + str(edadMax) + ":" + str(genero) + ":" + str(graduacion),
             "partidos": [],
-            "medallero": [], ###???
+            "peso" : {"min" : pesoMin, "max" : pesoMax},
+            "edad" : {"min" : edadMin, "max" : edadMax},
+            "genero" : genero,
+            "graduacion" : graduacion,
+            "medallero": {"oro":{}, "plata":{}, "bronce":{}},
             "modalidad": nombreModalidad }
     r.table(CATEGORIAS).insert(categoria).run()
 
@@ -73,48 +78,71 @@ def insertArbitro(placaArbitro, nombre):
             "categorias" : []}
     r.table(ARBITROS).insert(arbitro).run()
 
-def insertPartido(categoria, placaGanador, placaPerdedor, placaArbitro):
+def insertPartido(categoria, dniGanador, dniPerdedor, placaArbitro):
     ## Deben existir los 4
 
     ### Actualizar categoria
 
-    array = r.table(CATEGORIAS).get(categoria).run()["partidos"]
-    array += [(placaGanador, placaPerdedor, placaArbitro)]
-    r.table(CATEGORIAS).get(categoria).update({"partidos" : array }).run()
+    IDcategoria = getCategoria(categoria)
+
+    array = r.table(CATEGORIAS).get(IDcategoria).run()["partidos"]
+    array += [{"dniGanador" : dniGanador, "dniPerdedor" : dniPerdedor, "placaArbitro": placaArbitro}]
+    r.table(CATEGORIAS).get(IDcategoria).update({"partidos" : array }).run()
 
     ### Actualizar campeonato
 
-    # parametro o lo sacas de la categoria?
-    dic = r.table(CAMPEONATOS).get(anoCampeonato).run()["competidores"]
-    dic[placaGanador][1] += 1
-    r.table(CAMPEONATOS).get(anoCampeonato).update({"competidores" : dic}).run()
+    dic = r.table(CAMPEONATOS).get(categoria.get("anoCampeonato")).get_field("competidores").run()
+    dic[str(dniGanador)][1] += 1
+    r.table(CAMPEONATOS).get(categoria.get("anoCampeonato")).update({"competidores" : dic}).run()
 
-def insertMedalla(anoCampeonato, categoria, placaCompetidor):
-    modalidad = r.table(CATEGORIAS).get(categoria).run()["modalidad"]
+    ### Actualizar arbitro
+
+    array = r.table(ARBITROS).get(placaArbitro).get_field("categorias").run()
+    array += {"id" : IDcategoria}
+    r.table(ARBITROS).get(placaArbitro).update({"categorias" : array}).run()
+
+def insertMedalla(categoria, dniCompetidor, tipoMedalla):
+
+    anoCampeonato = categoria["anoCampeonato"]
+    IDcategoria = getCategoria(categoria)
+
+    modalidad = r.table(CATEGORIAS).get(IDcategoria).run()["modalidad"]
     ## Debe competir en esa categoria ese ano
 
     ### Actualizar record modalidad
     record = r.table(MODALIDADES).get(modalidad).run()["record"]
-    medallasCompetidor = r.table(COMPETIDORES).get(placaCompetidor).run()["medallas"] ### Corregir para que sea por modalidad
+    medallasCompetidor = r.table(COMPETIDORES).get(dniCompetidor).get_field("medallas").run()[modalidad]
     if (record == medallasCompetidor):
         record += 1
-        r.table(MODALIDADES).get(modalidad).update({"record" : record, "holders" : [placaCompetidor]}).run()
+        r.table(MODALIDADES).get(modalidad).update({"record" : record, "holders" : [dniCompetidor]}).run()
     elif (record == medallasCompetidor + 1):
         holders = r.table(MODALIDADES).get(modalidad).run()["holders"]
-        r.table(MODALIDADES).get(modalidad).update({"record" : record, "holders" : holders + [placaCompetidor]}).run()
+        r.table(MODALIDADES).get(modalidad).update({"record" : record, "holders" : holders + [dniCompetidor]}).run()
 
     ### Actualizar competidor
 
-    dic = r.table("competidor").get(placaCompetidor).run()["medallas"]
+    dic = r.table("competidor").get(dniCompetidor).get_field("medallas").run()
     dic[modalidad] += 1
-    r.table(COMPETIDORES).get(placaCompetidor).update({"medallas" : dic}).run()
+    r.table(COMPETIDORES).get(dniCompetidor).update({"medallas" : dic}).run()
 
     ### Actualizar escuela
 
-    escuela = r.table(COMPETIDORES).get(placaCompetidor)["escuela"].run()
+    escuela = r.table(COMPETIDORES).get(dniCompetidor).get_field("escuela").run()
     dic = r.table(ESCUELAS).get(escuela).run()["campeonato"]
     dic[anoCampeonato] += 1
     r.table(ESCUELAS).get(escuela).update({"campeonato": dic}).run()
+
+    ### Actualizar categoria
+
+    nombre = r.table(COMPETIDORES).get(dniCompetidor)
+    dic = r.table(CATEGORIAS).get(IDcategoria).get_field("medallero").run()
+    dic[tipoMedalla] = {"dni" : dniCompetidor, "nombre" : nombre}
+    dic = r.table(CATEGORIAS).get(IDcategoria).update({"medallero" : dic})
+
+def getCategoria(categoria):
+    ##La modalidad debe existir
+    return str(categoria.get("anoCampeonato")) + ":" + str(categoria.get("nombreModalidad")) + ":" + str(categoria.get("pesoMin")) + ":" + str(categoria.get("pesoMin")) + ":" + str(categoria.get("edadMin")) + ":" + str(categoria.get("edadMax")) + ":" + str(categoria.get("genero")) + ":" + str(categoria.get("graduacion"))
+
 
 ### Queries
 
@@ -144,4 +172,31 @@ def competidoresMasMedallasxMod(nombreModalidad): #Si es 0 no devuelve nada
 
 if __name__ == '__main__':
     connectToDB()
-    createTables()
+    #createTables()
+    '''for i in range (6):
+        insertModalidad("modalidad" + str(i))
+    for i in range (13):
+        insertEscuela("escuela" + str(i), "pais"+str(i))'''
+    '''for i in range (1, 26):
+        crearCompetidor(10000000 + i, "competidor" + str(i), "escuela" + str(i/2))'''
+    '''for i in range (2000, 2017):
+        print i
+#        insertCampeonato(i)
+        for j in range (1, 26):
+            insertCompetidor(i, 10000000 + j)'''
+
+#    insertCategoria(2002, None, None, None, None, None, None, None)
+
+#    insertArbitro(315, "Eliz hondo")
+
+#    insertCategoria(2002, "A", 10, 20, 30, 40, "Apache", 1)
+
+#    insertPartido({"anoCampeonato" : 2002}, 10000001, 10000002, 314)
+#    print getCategoria({"anoCampeonato" : 2002})
+#    for i in r.table(CAMPEONATOS).run().items: 
+#        if i["ano"] == 2002 : print i["competidores"]
+
+#    print r.table(MODALIDADES).get("modalidad1").run()
+    insertCategoria(2002, "modalidad1", None, None, None, None, None, None)
+    insertMedalla({"anoCampeonato" : 2002, "nombreModalidad" : "modalidad1"}, 10000001, "oro")
+
