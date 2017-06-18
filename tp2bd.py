@@ -68,7 +68,7 @@ def insertCompetidor(anoCampeonato, dniCompetidor):
 
 def insertEscuela(nombre, pais):
     escuela = {"nombre": nombre,
-               "campeonato": dict(),
+               "campeonatos": dict(),
                "competidores": [],
                "pais": pais}
     r.table(ESCUELAS).insert(escuela).run()
@@ -159,12 +159,12 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     escuela = r.table(COMPETIDORES).get(
         dniCompetidor).get_field("escuela").run()
     dic = r.table(ESCUELAS).get(escuela).run()
-    dic = dic["campeonato"]
+    dic = dic["campeonatos"]
     if anoCampeonato in dic:
         dic[str(anoCampeonato)] += 1
     else:
         dic[str(anoCampeonato)] = 1
-    r.table(ESCUELAS).get(escuela).update({"campeonato": dic}).run()
+    r.table(ESCUELAS).get(escuela).update({"campeonatos": dic}).run()
 
     # Actualizar categoria
 
@@ -190,7 +190,7 @@ def PGxCompxCamp(dniCompetidor, anoCampeonato):
 
 
 def medallasxEscuela(nombreEscuela):
-    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").sum("medallas").run()
+    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").values().sum().run()
 
 
 def mejorCampxEscuela(nombreEscuela):
@@ -302,4 +302,4 @@ if __name__ == '__main__':
     # print r.table(COMPETIDORES).get(10000001).run()
 
     # print(PGxCompxCamp(10000001, 2002))
-    print(medallasxEscuela("escuela0"))
+    # print(medallasxEscuela("escuela0"))
