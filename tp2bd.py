@@ -132,7 +132,7 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     # Debe competir en esa categoria ese ano
 
     # Actualizar record modalidad y competidor
-    medallasModalidad = 1
+    medallasModalidad = 0
     record = r.table(MODALIDADES).get(modalidad).run()["record"]
     medallasCompetidor = r.table(COMPETIDORES).get(
         dniCompetidor).get_field("medallas").run()
