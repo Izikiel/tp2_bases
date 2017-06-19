@@ -194,7 +194,7 @@ def medallasxEscuela(nombreEscuela):
 
 
 def mejorCampxEscuela(nombreEscuela):
-    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").max(lambda c: c["medallas"]).run()["ano"]
+    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").coerce_to("array").max(lambda kv : kv[1]).run()[0]
 
 
 def arbitrosMasde4Campeonatos():
@@ -303,3 +303,4 @@ if __name__ == '__main__':
 
     # print(PGxCompxCamp(10000001, 2002))
     # print(medallasxEscuela("escuela0"))
+    print(mejorCampxEscuela("escuela0"))
