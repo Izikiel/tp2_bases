@@ -62,8 +62,13 @@ def insertCompetidor(anoCampeonato, dniCompetidor):
     # ya debe existir
     escuela = r.table(COMPETIDORES).get(dniCompetidor).run()["escuela"]
     dic = r.table(CAMPEONATOS).get(anoCampeonato).run()["competidores"]
-    dic[str(dniCompetidor)] = (escuela, 0)
+    dic[str(dniCompetidor)] = {"escuela": {"ID": escuela, "Nombre": escuela}, "PG": 0}
     r.table(CAMPEONATOS).get(anoCampeonato).update({"competidores": dic}).run()
+
+    competidores = r.table(ESCUELAS).get(escuela).get_field("competidores").run()
+    if {"DNI": dniCompetidor} not in competidores:
+        competidores += [{"DNI": dniCompetidor}]
+    r.table(ESCUELAS).get(escuela).update({"competidores": competidores}).run()
 
 
 def insertEscuela(nombre, pais):
@@ -112,14 +117,15 @@ def insertPartido(categoria, dniGanador, dniPerdedor, placaArbitro):
 
     dic = r.table(CAMPEONATOS).get(categoria.get(
         "anoCampeonato")).get_field("competidores").run()
-    dic[str(dniGanador)][1] += 1
+    dic[str(dniGanador)]["PG"] += 1
     r.table(CAMPEONATOS).get(categoria.get("anoCampeonato")
                              ).update({"competidores": dic}).run()
 
     # Actualizar arbitro
 
     array = r.table(ARBITROS).get(placaArbitro).get_field("categorias").run()
-    array += {"id": IDcategoria}
+    if categoria["anoCampeonato"] not in array:
+        array += [categoria["anoCampeonato"]]
     r.table(ARBITROS).get(placaArbitro).update({"categorias": array}).run()
 
 
@@ -184,36 +190,42 @@ def getCategoria(categoria):
 def PGxCompxCamp(dniCompetidor, anoCampeonato):
     competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field(
         "competidores")[str(dniCompetidor)].run()
-    return competitors[1]
-
-    # Sacar partidos ganados
-
+    return competitors["PG"]
 
 def medallasxEscuela(nombreEscuela):
     return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").values().sum().run()
 
 
 def mejorCampxEscuela(nombreEscuela):
-    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").coerce_to("array").max(lambda kv : kv[1]).run()[0]
+    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").coerce_to("array").max(lambda kv : kv["PG"]).run()[0]
 
 
 def arbitrosMasde4Campeonatos():
-    return r.table("arbitros").map(lambda a: {
-        "placa": a["placa"],
-        "participaciones": a["categorias"].map(lambda r: r["ano"]).count()
-    }).filter(lambda row: row["participaciones"] > 4).get_field("placa").run()
-    # Ver el filtro
 
+    return r.table("arbitros").map(lambda a: {
+        "placaArbitro": a["placaArbitro"],
+        "participaciones": a["categorias"].count()
+    }).filter(lambda row: row["participaciones"] > 4).get_field("placaArbitro").run()
 
 def escuelasConMasComps(anoCampeonato):
     competitors = r.table(CAMPEONATOS).get(
         anoCampeonato).get_field("competidores").run()
-    schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().ungroup().map(lambda group: {
-        "value": group["reduction"],
-        "school": group["group"]
-    }).group(lambda x: x["value"]).run()
-    most_competitors = schools.max(schools.keys()).run()
-    return schools[most_competitors]
+    counter = {"":0}
+    max = 0
+    for tupla in competitors:
+        counter[tupla["escuela"]["Nombre"]] += 1
+        if(counter[tupla["escuela"]["Nombre"]] > max):
+            max += 1
+    for school in counter:
+         if counter[school] < max:   
+            counter.erase(school)
+    return counter.keys()                  
+    #schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().ungroup().map(lambda group: {
+    #    "value": group["reduction"],
+    #    "school": group["group"]
+    #}).group(lambda x: x["value"]).run()
+    #most_competitors = schools.max(schools.keys()).run()
+    #return schools[most_competitors]
 
 
 def escuelasConMasCompsMapReduce(anoCampeonato):
@@ -246,7 +258,7 @@ if __name__ == '__main__':
     for i in range(1, 26):
         crearCompetidor(10000000 + i, "competidor" +
                         str(i), "escuela" + str(i // 2))
-    for i in range(2000, 2017):
+    for i in range(2000, 2003):
         insertCampeonato(i)
         for j in range(1, 26):
             insertCompetidor(i, 10000000 + j)
@@ -268,7 +280,7 @@ if __name__ == '__main__':
 
         # insertCategoria(2002, None, None, None, None, None, None, None)
 
-    #    insertArbitro(315, "Eliz hondo")
+    insertArbitro(315, "Eliz hondo")
 
     #    insertPartido({"anoCampeonato" : 2002}, 10000001, 10000002, 314)
     #    print getCategoria({"anoCampeonato" : 2002})
@@ -299,8 +311,22 @@ if __name__ == '__main__':
     }
 
     insertMedalla(categoria, 10000001, "oro")
+
+    insertPartido(categoria, 10000001, 10000002, 315)
+    insertPartido(categoria, 10000002, 10000003, 315)
+    insertPartido(categoria, 10000003, 10000004, 315)
+
+    crearCompetidor(4, "nadie", "escuela0")
+    insertCompetidor(2002, 4)
+
+    for i in r.table(ESCUELAS).run().items: print i
+    
+    print escuelasConMasComps(2002)
+
+
+
     # print r.table(COMPETIDORES).get(10000001).run()
 
     # print(PGxCompxCamp(10000001, 2002))
     # print(medallasxEscuela("escuela0"))
-    print(mejorCampxEscuela("escuela0"))
+    # print(mejorCampxEscuela("escuela0"))
