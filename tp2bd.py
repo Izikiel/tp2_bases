@@ -215,7 +215,7 @@ def escuelasConMasComps():
 
 def escuelasConMasCompsCampeonato(anoCampeonato):
     schools = r.table(CAMPEONATOS).get(anoCampeonato)[
-        'competidores'].values().map(lambda c: c["escuela"]).group("Nombre")
+        'competidores'].values()["escuela"].group("Nombre")
     return schools.count().ungroup().max("reduction")["group"]
 
 
@@ -309,11 +309,11 @@ if __name__ == '__main__':
     insertCompetidor(2002, 4)
 
     # print(arbitrosMasde4Campeonatos())
-    print(competidoresMasMedallasxMod(nombreModalidad))
+    # print(competidoresMasMedallasxMod(nombreModalidad))
 
     # print(escuelasConMasCompsMapReduce(2002))
     # print(escuelasConMasComps())
-    # print(escuelasConMasCompsMapReduceTotal())
+    print(escuelasConMasCompsMapReduceTotal())
 
     # print r.table(COMPETIDORES).get(10000001).run()
 
