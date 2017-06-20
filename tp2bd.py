@@ -140,8 +140,9 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     # Actualizar record modalidad y competidor
     medallasModalidad = 0
     record = r.table(MODALIDADES).get(modalidad).run()["record"]
-    medallasCompetidor = r.table(COMPETIDORES).get(
-        dniCompetidor).get_field("medallas").run()
+    nombre, medallasCompetidor = r.table(COMPETIDORES).get(
+        dniCompetidor).pluck("medallas", "nombre").run().values()
+
     if modalidad in medallasCompetidor:
         medallasModalidad = medallasCompetidor[modalidad]
         medallasCompetidor[modalidad] += 1
@@ -151,11 +152,11 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     if (record == medallasModalidad):
         record += 1
         r.table(MODALIDADES).get(modalidad).update(
-            {"record": record, "holders": [dniCompetidor]}).run()
+            {"record": record, "holders": [{"DNI":dniCompetidor, "Nombre":nombre}]}).run()
     elif (record == medallasModalidad + 1):
         holders = r.table(MODALIDADES).get(modalidad).run()["holders"]
         r.table(MODALIDADES).get(modalidad).update(
-            {"record": record, "holders": holders + [dniCompetidor]}).run()
+            {"record": record, "holders": holders + [{"DNI": dniCompetidor, "Nombre":nombre}]}).run()
 
     r.table(COMPETIDORES).get(dniCompetidor).update(
         {"medallas": medallasCompetidor}).run()
@@ -213,13 +214,18 @@ def escuelasConMasComps(anoCampeonato):
     counter = {"":0}
     max = 0
     for tupla in competitors:
-        counter[tupla["escuela"]["Nombre"]] += 1
-        if(counter[tupla["escuela"]["Nombre"]] > max):
+        nombreEscuela = competitors[tupla]["escuela"]["Nombre"]
+        if nombreEscuela in counter:
+            counter[nombreEscuela] += 1
+        else:
+            counter[nombreEscuela] = 1
+        if(counter[nombreEscuela] > max):
             max += 1
+    res = []
     for school in counter:
-         if counter[school] < max:   
-            counter.erase(school)
-    return counter.keys()                  
+         if counter[school] == max:
+            res += [school]
+    return res
     #schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().ungroup().map(lambda group: {
     #    "value": group["reduction"],
     #    "school": group["group"]
@@ -229,23 +235,28 @@ def escuelasConMasComps(anoCampeonato):
 
 
 def escuelasConMasCompsMapReduce(anoCampeonato):
-    competitors = r.table(CAMPEONATOS).get(
-        anoCampeonato).get_field("competidores").run()
-    schools = competitors.map(lambda c: {
-        "school": c["escuela"]["Nombre"],
-        "value": 1
-    }).group("school").reduce(lambda a, b: {
-        "school": a["school"],
-        "count": a["count"] + b["count"]
-    }).ungroup().map(lambda g: {"value": group["reduction"],
-                                "school": group["group"]
-                                }).group(lambda x: x["value"]).run()
-    most_competitors = schools.max(schools.keys()).run()
-    return schools[most_competitors]
+    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
+    dni_competitors = competitors.keys()
+    res = r.table(COMPETIDORES).filter(lambda c:
+        c["dniCompetidor"] in dni_competitors
+        ).group("escuela").count().ungroup().max("reduction").run()
+    return res["group"]
+    # competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").map(lambda c: {
+    #     c["escuela"]
+    # }).count().run()
+    # print competitors
+    # schools = competitors.group("school").reduce(lambda a, b: {
+    #     "school": a["school"],
+    #     "count": a["count"] + b["count"]
+    # }).ungroup().map(lambda g: {"value": group["reduction"],
+    #                             "school": group["group"]
+    #                             }).group(lambda x: x["value"]).run()
+    # most_competitors = schools.max(schools.keys()).run()
+    # return schools[most_competitors]
 
 
 def competidoresMasMedallasxMod(nombreModalidad):  # Si es 0 no devuelve nada
-    return r.table(MODALIDADES).get(nombreModalidad).get_field("Holders").map(lambda c: c["Nombre"]).run()
+    return r.table(MODALIDADES).get(nombreModalidad).get_field("holders").map(lambda c: c["Nombre"]).run()
 
 if __name__ == '__main__':
     connectToDB()
@@ -316,17 +327,28 @@ if __name__ == '__main__':
     insertPartido(categoria, 10000002, 10000003, 315)
     insertPartido(categoria, 10000003, 10000004, 315)
 
+<<<<<<< HEAD
     crearCompetidor(4, "nadie", "escuela0")
     insertCompetidor(2002, 4)
 
     for i in r.table(ESCUELAS).run().items: print i
-    
+
     print escuelasConMasComps(2002)
 
 
+=======
+    crearCompetidor(4, "nadie", "escuela1")
+    insertCompetidor(2002, 4)
+
+    print escuelasConMasCompsMapReduce(2002)
+>>>>>>> 6e945d71ccbb8bb5fbef3af7017c7163a86d8e8a
 
     # print r.table(COMPETIDORES).get(10000001).run()
 
     # print(PGxCompxCamp(10000001, 2002))
     # print(medallasxEscuela("escuela0"))
     # print(mejorCampxEscuela("escuela0"))
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6e945d71ccbb8bb5fbef3af7017c7163a86d8e8a
