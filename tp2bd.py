@@ -208,6 +208,7 @@ def arbitrosMasde4Campeonatos():
         "participaciones": a["categorias"].count()
     }).filter(lambda row: row["participaciones"] > 4).get_field("placaArbitro").run()
 
+<<<<<<< Updated upstream
 def escuelasConMasComps(anoCampeonato):
     competitors = r.table(CAMPEONATOS).get(
         anoCampeonato).get_field("competidores").run()
@@ -232,6 +233,48 @@ def escuelasConMasComps(anoCampeonato):
     #}).group(lambda x: x["value"]).run()
     #most_competitors = schools.max(schools.keys()).run()
     #return schools[most_competitors]
+=======
+
+# Devolver {"añoCampeonato":"escuela"}
+# escuela = {"nombre": nombre,
+#            "campeonatos": dict(),
+#            "competidores": [],
+#            "pais": pais}
+# campeonato = {"ano": ano,
+#                 "competidores": dict(),
+#                 "categorias": [],
+#                 "arbitros": []}
+def countCompetidoresEscuelaCampeonato(anoCampeonato, competidores):
+    return r.table_list(CAMPEONATOS).get(anoCampeonato)["competidores"].keys().set_intersection(competidores).count()
+
+
+
+    schools_t = r.table(ESCUELAS).map(lambda row: row["nombre"], row["campeonatos"].keys(), row["competidores"])
+    championships = r.table(CAMPEONATOS).map(lambda row: row["ano"], row["competidores"].keys())
+    schools_t.map(lambda row: )
+
+
+
+
+    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").coerce_to("array").group(lambda c: c["escuela"]["Nombre"]).run()
+    # counter = {"":0}
+    # max = 0
+    # for tupla in competitors:
+    #     counter[tupla["escuela"]["Nombre"]] += 1
+    #     if(counter[tupla["escuela"]["Nombre"]] > max):
+    #         max += 1
+    # for school in counter:
+    #      if counter[school] < max:
+    #         counter.erase(school)
+    # return counter.keys()
+    schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().run()
+    bob = schools.ungroup().map(lambda group: {
+       "value": group["reduction"],
+       "school": group["group"]
+    }).group(lambda x: x["value"]).run()
+    most_competitors = schools.max(schools.keys()).run()
+    return schools[most_competitors]
+>>>>>>> Stashed changes
 
 
 def escuelasConMasCompsMapReduce(anoCampeonato):
@@ -330,7 +373,15 @@ if __name__ == '__main__':
     crearCompetidor(4, "nadie", "escuela1")
     insertCompetidor(2002, 4)
 
+<<<<<<< Updated upstream
     print escuelasConMasCompsMapReduce(2002)
+=======
+    # for i in r.table(ESCUELAS).run().items: print i
+
+    print(escuelasConMasComps(2002))
+
+
+>>>>>>> Stashed changes
 
     # print r.table(COMPETIDORES).get(10000001).run()
 
