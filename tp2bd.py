@@ -327,28 +327,13 @@ if __name__ == '__main__':
     insertPartido(categoria, 10000002, 10000003, 315)
     insertPartido(categoria, 10000003, 10000004, 315)
 
-<<<<<<< HEAD
-    crearCompetidor(4, "nadie", "escuela0")
-    insertCompetidor(2002, 4)
-
-    for i in r.table(ESCUELAS).run().items: print i
-
-    print escuelasConMasComps(2002)
-
-
-=======
     crearCompetidor(4, "nadie", "escuela1")
     insertCompetidor(2002, 4)
 
     print escuelasConMasCompsMapReduce(2002)
->>>>>>> 6e945d71ccbb8bb5fbef3af7017c7163a86d8e8a
 
     # print r.table(COMPETIDORES).get(10000001).run()
 
     # print(PGxCompxCamp(10000001, 2002))
     # print(medallasxEscuela("escuela0"))
     # print(mejorCampxEscuela("escuela0"))
-<<<<<<< HEAD
-=======
-
->>>>>>> 6e945d71ccbb8bb5fbef3af7017c7163a86d8e8a
