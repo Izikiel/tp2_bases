@@ -125,10 +125,9 @@ def insertPartido(categoria, dniGanador, dniPerdedor, placaArbitro):
 
     # Actualizar arbitro
 
-    array = r.table(ARBITROS).get(placaArbitro).get_field("categorias").run()
-    if categoria["anoCampeonato"] not in array:
-        array += [categoria["anoCampeonato"]]
-    r.table(ARBITROS).get(placaArbitro).update({"categorias": array}).run()
+    arbitro_has_categoria = r.table(ARBITROS).get(placaArbitro).get_field("categorias").contains(IDcategoria).run()
+    if not arbitro_has_categoria:
+        r.table(ARBITROS).get(placaArbitro).update({"categorias": r.row["categorias"] + [IDcategoria]}).run()
 
 
 def insertMedalla(categoria, dniCompetidor, tipoMedalla):
@@ -204,27 +203,11 @@ def mejorCampxEscuela(nombreEscuela):
     return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").coerce_to("array").max(lambda kv: kv["PG"]).run()[0]
 
 
+def getAnoCategoria(idCategoria):
+    return idCategoria.split(":")[0]
+
 def arbitrosMasde4Campeonatos():
-
-    return r.table("arbitros").map(lambda a: {
-        "placaArbitro": a["placaArbitro"],
-        "participaciones": a["categorias"].count()
-    }).filter(lambda row: row["participaciones"] > 4).get_field("placaArbitro").run()
-
-
-# Devolver {"añoCampeonato":"escuela"}
-# escuela = {"nombre": nombre,
-#            "campeonatos": dict(),
-#            "competidores": [],
-#            "pais": pais}
-# campeonato = {"ano": ano,
-#                 "competidores": dict(),
-#                 "categorias": [],
-#                 "arbitros": []}
-# competidor = {"dniCompetidor": dniCompetidor,
-#                 "nombre": nombre,
-#                 "escuela": nombreEscuela,
-#                 "medallas": dict()}
+    return r.table(ARBITROS).filter(r.row["categorias"].map(getAnoCategoria).distinct().count() > 3)["placaArbitro"].run()
 
 def escuelasConMasComps():
     return r.table(CAMPEONATOS).map(lambda c: [c["ano"], escuelasConMasCompsCampeonato(c["ano"])]).run()
@@ -324,9 +307,11 @@ if __name__ == '__main__':
     crearCompetidor(4, "nadie", "escuela1")
     insertCompetidor(2002, 4)
 
+    print(arbitrosMasde4Campeonatos())
+
     # print(escuelasConMasCompsMapReduce(2002))
     # print(escuelasConMasComps())
-    print(escuelasConMasCompsMapReduceTotal())
+    # print(escuelasConMasCompsMapReduceTotal())
 
     # print r.table(COMPETIDORES).get(10000001).run()
 
