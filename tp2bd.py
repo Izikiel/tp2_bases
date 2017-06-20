@@ -62,10 +62,12 @@ def insertCompetidor(anoCampeonato, dniCompetidor):
     # ya debe existir
     escuela = r.table(COMPETIDORES).get(dniCompetidor).run()["escuela"]
     dic = r.table(CAMPEONATOS).get(anoCampeonato).run()["competidores"]
-    dic[str(dniCompetidor)] = {"escuela": {"ID": escuela, "Nombre": escuela}, "PG": 0}
+    dic[str(dniCompetidor)] = {"escuela": {
+        "ID": escuela, "Nombre": escuela}, "PG": 0}
     r.table(CAMPEONATOS).get(anoCampeonato).update({"competidores": dic}).run()
 
-    competidores = r.table(ESCUELAS).get(escuela).get_field("competidores").run()
+    competidores = r.table(ESCUELAS).get(
+        escuela).get_field("competidores").run()
     if {"DNI": dniCompetidor} not in competidores:
         competidores += [{"DNI": dniCompetidor}]
     r.table(ESCUELAS).get(escuela).update({"competidores": competidores}).run()
@@ -140,7 +142,7 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     # Actualizar record modalidad y competidor
     medallasModalidad = 0
     record = r.table(MODALIDADES).get(modalidad).run()["record"]
-    nombre, medallasCompetidor = r.table(COMPETIDORES).get(
+    medallasCompetidor, nombre = r.table(COMPETIDORES).get(
         dniCompetidor).pluck("medallas", "nombre").run().values()
 
     if modalidad in medallasCompetidor:
@@ -152,11 +154,11 @@ def insertMedalla(categoria, dniCompetidor, tipoMedalla):
     if (record == medallasModalidad):
         record += 1
         r.table(MODALIDADES).get(modalidad).update(
-            {"record": record, "holders": [{"DNI":dniCompetidor, "Nombre":nombre}]}).run()
+            {"record": record, "holders": [{"DNI": dniCompetidor, "Nombre": nombre}]}).run()
     elif (record == medallasModalidad + 1):
         holders = r.table(MODALIDADES).get(modalidad).run()["holders"]
         r.table(MODALIDADES).get(modalidad).update(
-            {"record": record, "holders": holders + [{"DNI": dniCompetidor, "Nombre":nombre}]}).run()
+            {"record": record, "holders": holders + [{"DNI": dniCompetidor, "Nombre": nombre}]}).run()
 
     r.table(COMPETIDORES).get(dniCompetidor).update(
         {"medallas": medallasCompetidor}).run()
@@ -193,12 +195,13 @@ def PGxCompxCamp(dniCompetidor, anoCampeonato):
         "competidores")[str(dniCompetidor)].run()
     return competitors["PG"]
 
+
 def medallasxEscuela(nombreEscuela):
     return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").values().sum().run()
 
 
 def mejorCampxEscuela(nombreEscuela):
-    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").coerce_to("array").max(lambda kv : kv["PG"]).run()[0]
+    return r.table(ESCUELAS).get(nombreEscuela).get_field("campeonatos").coerce_to("array").max(lambda kv: kv["PG"]).run()[0]
 
 
 def arbitrosMasde4Campeonatos():
@@ -208,32 +211,6 @@ def arbitrosMasde4Campeonatos():
         "participaciones": a["categorias"].count()
     }).filter(lambda row: row["participaciones"] > 4).get_field("placaArbitro").run()
 
-<<<<<<< Updated upstream
-def escuelasConMasComps(anoCampeonato):
-    competitors = r.table(CAMPEONATOS).get(
-        anoCampeonato).get_field("competidores").run()
-    counter = {"":0}
-    max = 0
-    for tupla in competitors:
-        nombreEscuela = competitors[tupla]["escuela"]["Nombre"]
-        if nombreEscuela in counter:
-            counter[nombreEscuela] += 1
-        else:
-            counter[nombreEscuela] = 1
-        if(counter[nombreEscuela] > max):
-            max += 1
-    res = []
-    for school in counter:
-         if counter[school] == max:
-            res += [school]
-    return res
-    #schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().ungroup().map(lambda group: {
-    #    "value": group["reduction"],
-    #    "school": group["group"]
-    #}).group(lambda x: x["value"]).run()
-    #most_competitors = schools.max(schools.keys()).run()
-    #return schools[most_competitors]
-=======
 
 # Devolver {"añoCampeonato":"escuela"}
 # escuela = {"nombre": nombre,
@@ -244,58 +221,32 @@ def escuelasConMasComps(anoCampeonato):
 #                 "competidores": dict(),
 #                 "categorias": [],
 #                 "arbitros": []}
-def countCompetidoresEscuelaCampeonato(anoCampeonato, competidores):
-    return r.table_list(CAMPEONATOS).get(anoCampeonato)["competidores"].keys().set_intersection(competidores).count()
+# competidor = {"dniCompetidor": dniCompetidor,
+#                 "nombre": nombre,
+#                 "escuela": nombreEscuela,
+#                 "medallas": dict()}
+
+def escuelasConMasComps():
+    return r.table(CAMPEONATOS).map(lambda c: [c["ano"], escuelasConMasCompsCampeonato(c["ano"])]).run()
 
 
-
-    schools_t = r.table(ESCUELAS).map(lambda row: row["nombre"], row["campeonatos"].keys(), row["competidores"])
-    championships = r.table(CAMPEONATOS).map(lambda row: row["ano"], row["competidores"].keys())
-    schools_t.map(lambda row: )
-
-
+def escuelasConMasCompsCampeonato(anoCampeonato):
+    schools = r.table(CAMPEONATOS).get(anoCampeonato)[
+        'competidores'].values().map(lambda c: c["escuela"]).group("Nombre")
+    return schools.count().ungroup().max("reduction")["group"]
 
 
-    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").coerce_to("array").group(lambda c: c["escuela"]["Nombre"]).run()
-    # counter = {"":0}
-    # max = 0
-    # for tupla in competitors:
-    #     counter[tupla["escuela"]["Nombre"]] += 1
-    #     if(counter[tupla["escuela"]["Nombre"]] > max):
-    #         max += 1
-    # for school in counter:
-    #      if counter[school] < max:
-    #         counter.erase(school)
-    # return counter.keys()
-    schools = competitors.group(lambda c: c["escuela"]["Nombre"]).count().run()
-    bob = schools.ungroup().map(lambda group: {
-       "value": group["reduction"],
-       "school": group["group"]
-    }).group(lambda x: x["value"]).run()
-    most_competitors = schools.max(schools.keys()).run()
-    return schools[most_competitors]
->>>>>>> Stashed changes
+def escuelasConMasCompsMapReduceTotal():
+    return r.table(CAMPEONATOS).map(lambda c: [c["ano"], escuelasConMasCompsMapReduce(c["ano"])]).run()
 
 
 def escuelasConMasCompsMapReduce(anoCampeonato):
-    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
-    dni_competitors = competitors.keys()
-    res = r.table(COMPETIDORES).filter(lambda c:
-        c["dniCompetidor"] in dni_competitors
-        ).group("escuela").count().ungroup().max("reduction").run()
-    return res["group"]
-    # competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").map(lambda c: {
-    #     c["escuela"]
-    # }).count().run()
-    # print competitors
-    # schools = competitors.group("school").reduce(lambda a, b: {
-    #     "school": a["school"],
-    #     "count": a["count"] + b["count"]
-    # }).ungroup().map(lambda g: {"value": group["reduction"],
-    #                             "school": group["group"]
-    #                             }).group(lambda x: x["value"]).run()
-    # most_competitors = schools.max(schools.keys()).run()
-    # return schools[most_competitors]
+    dni_competitors = r.table(CAMPEONATOS).get(
+        anoCampeonato)["competidores"].keys()
+    return r.table(COMPETIDORES).filter(lambda c:
+                                        dni_competitors.contains(
+                                            c["dniCompetidor"].coerce_to('string'))
+                                        ).group("escuela").count().ungroup().max("reduction")["group"]
 
 
 def competidoresMasMedallasxMod(nombreModalidad):  # Si es 0 no devuelve nada
@@ -373,15 +324,9 @@ if __name__ == '__main__':
     crearCompetidor(4, "nadie", "escuela1")
     insertCompetidor(2002, 4)
 
-<<<<<<< Updated upstream
-    print escuelasConMasCompsMapReduce(2002)
-=======
-    # for i in r.table(ESCUELAS).run().items: print i
-
-    print(escuelasConMasComps(2002))
-
-
->>>>>>> Stashed changes
+    # print(escuelasConMasCompsMapReduce(2002))
+    # print(escuelasConMasComps())
+    print(escuelasConMasCompsMapReduceTotal())
 
     # print r.table(COMPETIDORES).get(10000001).run()
 
