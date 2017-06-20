@@ -233,7 +233,8 @@ def escuelasConMasCompsMapReduce(anoCampeonato):
 
 
 def competidoresMasMedallasxMod(nombreModalidad):  # Si es 0 no devuelve nada
-    return r.table(MODALIDADES).get(nombreModalidad).get_field("holders").map(lambda c: c["Nombre"]).run()
+    modalidad = r.table(MODALIDADES).get(nombreModalidad)
+    return r.branch(modalidad, modalidad["holders"]["Nombre"], []).run()
 
 if __name__ == '__main__':
     connectToDB()
@@ -307,7 +308,8 @@ if __name__ == '__main__':
     crearCompetidor(4, "nadie", "escuela1")
     insertCompetidor(2002, 4)
 
-    print(arbitrosMasde4Campeonatos())
+    # print(arbitrosMasde4Campeonatos())
+    print(competidoresMasMedallasxMod(nombreModalidad))
 
     # print(escuelasConMasCompsMapReduce(2002))
     # print(escuelasConMasComps())
