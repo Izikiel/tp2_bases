@@ -235,20 +235,24 @@ def escuelasConMasComps(anoCampeonato):
 
 
 def escuelasConMasCompsMapReduce(anoCampeonato):
-    competitors = r.table(CAMPEONATOS).get(
-        anoCampeonato).get_field("competidores").map(lambda c: {
-        "school": c["escuela"]["Nombre"],
-        "value": 1
-    }).run()
-    print competitors
-    schools = competitors.group("school").reduce(lambda a, b: {
-        "school": a["school"],
-        "count": a["count"] + b["count"]
-    }).ungroup().map(lambda g: {"value": group["reduction"],
-                                "school": group["group"]
-                                }).group(lambda x: x["value"]).run()
-    most_competitors = schools.max(schools.keys()).run()
-    return schools[most_competitors]
+    competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").run()
+    dni_competitors = competitors.keys()
+    res = r.table(COMPETIDORES).filter(lambda c:
+        c["dniCompetidor"] in dni_competitors
+        ).group("escuela").count().ungroup().max("reduction").run()
+    return res["group"]
+    # competitors = r.table(CAMPEONATOS).get(anoCampeonato).get_field("competidores").map(lambda c: {
+    #     c["escuela"]
+    # }).count().run()
+    # print competitors
+    # schools = competitors.group("school").reduce(lambda a, b: {
+    #     "school": a["school"],
+    #     "count": a["count"] + b["count"]
+    # }).ungroup().map(lambda g: {"value": group["reduction"],
+    #                             "school": group["group"]
+    #                             }).group(lambda x: x["value"]).run()
+    # most_competitors = schools.max(schools.keys()).run()
+    # return schools[most_competitors]
 
 
 def competidoresMasMedallasxMod(nombreModalidad):  # Si es 0 no devuelve nada
