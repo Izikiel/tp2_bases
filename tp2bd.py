@@ -240,6 +240,29 @@ if __name__ == '__main__':
     connectToDB()
     deleteTables()
     createTables()
+
+    # para sharding
+    # from random import randint
+    # count = 10**5
+
+    # while count > 0:
+    #     i = randint(0, 10**6)
+    #     crearCompetidor(i, "competidor" +
+    #                     str(i), "escuela" + str(i // 2))
+    #     count -= 1
+
+    # r.table(COMPETIDORES).reconfigure(shards=3)
+    # # ver de reconfigurar en el admin web q aca parece q no anda
+    # count = 10**5
+
+    # while count > 0:
+    #     i = randint(0, 10**6)
+    #     crearCompetidor(i, "competidor" +
+    #                     str(i), "escuela" + str(i // 2))
+    #     count -= 1
+
+
+
     for i in range(6):
         insertModalidad("modalidad" + str(i))
     for i in range(13):
